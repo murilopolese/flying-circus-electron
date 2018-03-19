@@ -1,0 +1,11 @@
+{
+    "name": "micropython-web-ide",
+    "version": "0.0.1",
+    "description": "Web wrapper for Micropython IDE",
+    "main": "main.js",
+    "scripts": {
+      "start": "node main.js"
+    },
+    "author": "",
+    "license": "ISC"
+}

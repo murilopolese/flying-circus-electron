@@ -1,0 +1,192 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/polymer/lib/elements/dom-if.html">
+<link rel="import" href="../bower_components/iron-icons/iron-icons.html">
+<link rel="import" href="../bower_components/iron-icons/av-icons.html">
+<link rel="import" href="../bower_components/iron-icons/hardware-icons.html">
+<link rel="import" href="../bower_components/paper-fab/paper-fab.html">
+<link rel="import" href="../bower_components/monaco-editor/monaco-editor.html">
+<link rel="import" href="./event-emitter.html">
+
+<dom-module id="mp-ide">
+    <template>
+        <style>
+            :host {
+                display: block;
+            }
+            .header {
+                width: 100%;
+                height: 50px;
+            }
+            .editor {
+                width: 100%;
+                height: calc(70vh);
+            }
+            .console {
+                width: 100%;
+                height: calc(30vh - 50px);
+            }
+            .header {
+                display: flex;
+                flex-direction: row;
+                align-items: center;
+                justify-content: flex-start;
+            }
+            .header paper-fab {
+                display: inline-block;
+                margin: 0 5px;
+                --paper-fab-background: #FF5722;
+            }
+        </style>
+        <div class="header">
+            <template is="dom-if" if="[[!isConnected]]">
+                <paper-fab
+                    on-tap="connect"
+                    icon="hardware:developer-board"
+                    mini>
+                </paper-fab>
+            </template>
+            <template is="dom-if" if="[[isConnected]]">
+                <paper-fab
+                    on-tap="disconnect"
+                    icon="hardware:developer-board"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="run"
+                    icon="av:play-arrow"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="stop"
+                    icon="av:stop"
+                    mini>
+                </paper-fab>
+            </template>
+        </div>
+        <monaco-editor
+            id="code"
+            class="editor"
+            value="[[code]]"
+            theme="vs-dark"
+            language="python"
+            folding>
+        </monaco-editor>
+        <monaco-editor
+            id="console"
+            class="console"
+            theme="vs-dark"
+            language="text"
+            line-numbers="off"
+            value="[[consoleOut]]"
+            read-only>
+        </monaco-editor>
+    </template>
+    <script>
+        class MicroPythonIDE extends Polymer.Element {
+            static get is() {
+              return 'mp-ide';
+            }
+            static get properties() {
+                return {
+                    bus: {
+                        type: Object,
+                        value: null
+                    },
+                    isConnected: {
+                        type: Boolean,
+                        value: false
+                    },
+                    consoleOut: {
+                        type: String,
+                        value: ''
+                    },
+                    code: {
+                        type: String,
+                        value: `from time import sleep
+
+while True:
+    print('hello micropython')
+    sleep(1)`
+                    }
+                }
+            }
+            connectedCallback() {
+                super.connectedCallback();
+                if (window.bus) {
+                    this.set('bus', window.bus);
+                } else {
+                    this.set('bus', new EventEmitter());
+                    this._bindFakeServer();
+                }
+
+                this._bindEvents();
+            }
+            disconnectedCallback() {
+                super.disconnectedCallback();
+            }
+            _bindFakeServer() {
+                this.bus.on('connect', (options) => {
+                    this.bus.emit('device-connected', {
+                        error: null,
+                        data: true
+                    });
+                    this.bus.emit('console-out', {
+                        error: null,
+                        data: 'Welcome to MicroPython'
+                    });
+                });
+                this.bus.on('disconnect', (options) => {
+                    this.bus.emit('device-disconnected', {
+                        error: null,
+                        data: false
+                    });
+                    this.bus.emit('console-out', {
+                        error: null,
+                        data: 'Disconected'
+                    });
+                });
+                this.bus.on('run', (code) => {
+                    this.bus.emit('console-out', {
+                        error: null,
+                        data: 'hello micropython'
+                    });
+                });
+                this.bus.on('stop', () => {
+                    this.bus.emit('console-out', {
+                        error: null,
+                        data: 'Stopped'
+                    });
+                });
+            }
+            _bindEvents() {
+                this.bus.on('device-connected', (message) => {
+                    this.set('isConnected', true);
+                });
+                this.bus.on('device-disconnected', (message) => {
+                    this.set('isConnected', false);
+                });
+                this.bus.on('console-out', (message) => {
+                    this._consoleOut(message.data);
+                });
+            }
+            _consoleOut(msg) {
+                this.consoleOut = `${msg}\n${this.consoleOut}`;
+                this.consoleOut = `${this.consoleOut}\n`;
+            }
+            connect() {
+                this.bus.emit('connect');
+            }
+            disconnect() {
+                this.bus.emit('disconnect');
+            }
+            run() {
+                const code = this.$.code.value;
+                this.bus.emit('run', code);
+            }
+            stop() {
+                this.bus.emit('stop');
+            }
+        };
+        window.customElements.define(MicroPythonIDE.is, MicroPythonIDE);
+    </script>
+</dom-module>

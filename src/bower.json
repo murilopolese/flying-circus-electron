@@ -1,0 +1,23 @@
+{
+  "name": "micropython-frontend-ide",
+  "description": "Front end for Micropython IDE",
+  "main": "index.html",
+  "authors": [
+    "Murilo Polese <murilopolese@gmail.com>"
+  ],
+  "license": "ISC",
+  "homepage": "",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "polymer": "^2.5.0",
+    "monaco-editor": "PolymerVis/monaco-editor#^2.0.4",
+    "paper-fab": "PolymerElements/paper-fab#^2.1.0",
+    "iron-icons": "^2.1.1"
+  }
+}
