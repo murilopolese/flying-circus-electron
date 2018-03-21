@@ -4,7 +4,12 @@
 <link rel="import" href="../bower_components/iron-icons/av-icons.html">
 <link rel="import" href="../bower_components/iron-icons/hardware-icons.html">
 <link rel="import" href="../bower_components/paper-fab/paper-fab.html">
-<link rel="import" href="../bower_components/monaco-editor/monaco-editor.html">
+<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
+<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
+<link rel="import" href="../bower_components/paper-item/paper-item.html">
+<link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<link rel="import" href="../bower_components/juicy-ace-editor/juicy-ace-editor.html">
 <link rel="import" href="./event-emitter.html">
 
 <dom-module id="mp-ide">
@@ -12,18 +17,23 @@
         <style>
             :host {
                 display: block;
+                background: #1e1e1e;
             }
             .header {
                 width: 100%;
-                height: 50px;
+                height: 60px;
+                background: rgba(0, 0, 0, 0.2);
             }
             .editor {
                 width: 100%;
-                height: calc(70vh);
+                height: calc(100vh - 160px);
             }
             .console {
                 width: 100%;
-                height: calc(30vh - 50px);
+                height: 100px;
+                color: white;
+                background: black;
+                overflow-y: scroll;
             }
             .header {
                 display: flex;
@@ -34,7 +44,15 @@
             .header paper-fab {
                 display: inline-block;
                 margin: 0 5px;
-                --paper-fab-background: #FF5722;
+                --paper-fab-background: var(--google-yellow-500);
+            }
+            #fileToUpload {
+                color: white;
+            }
+            paper-spinner, paper-spinner-lite {
+                margin: 5px;
+                 --paper-spinner-stroke-width: 6px;
+                 --paper-spinner-color: var(--google-yellow-500);
             }
         </style>
         <div class="header">
@@ -44,6 +62,11 @@
                     icon="hardware:developer-board"
                     mini>
                 </paper-fab>
+                <select id="serialPorts">
+                    <template is="dom-repeat" items="[[availableDevices]]">
+                        <option value="[[item.comName]]">[[item.comName]]</option>
+                    </template>
+                </select>
             </template>
             <template is="dom-if" if="[[isConnected]]">
                 <paper-fab
@@ -61,25 +84,35 @@
                     icon="av:stop"
                     mini>
                 </paper-fab>
+                <paper-fab
+                    on-tap="saveMain"
+                    icon="icons:save"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="reset"
+                    icon="av:replay"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="uploadFile"
+                    icon="icons:file-upload"
+                    mini>
+                </paper-fab>
+                <input id="fileToUpload" type="file">
+            </template>
+            <template is="dom-if" if="[[loading]]">
+                <paper-spinner-lite active="[[loading]]"></paper-spinner-lite active="[[loading]]">
             </template>
         </div>
-        <monaco-editor
+        <juicy-ace-editor
             id="code"
             class="editor"
-            value="[[code]]"
-            theme="vs-dark"
-            language="python"
-            folding>
-        </monaco-editor>
-        <monaco-editor
-            id="console"
-            class="console"
-            theme="vs-dark"
-            language="text"
-            line-numbers="off"
-            value="[[consoleOut]]"
-            read-only>
-        </monaco-editor>
+            mode="ace/mode/python"
+            on-change="saveCode"
+            value="[[code]]">
+        </juicy-ace-editor>
+        <div id="console" class="console"><code><pre>[[consoleOut]]</pre></code></div>
     </template>
     <script>
         class MicroPythonIDE extends Polymer.Element {
@@ -88,6 +121,10 @@
             }
             static get properties() {
                 return {
+                    loading: {
+                        type: Boolean,
+                        value: false
+                    },
                     bus: {
                         type: Object,
                         value: null
@@ -100,13 +137,25 @@
                         type: String,
                         value: ''
                     },
+                    availablePorts: {
+                        type: Array,
+                        value: () => []
+                    },
+                    selectedPort: {
+                        type: String,
+                        value: null
+                    },
+                    availableDevices: {
+                        type: Array,
+                        computed: '_computeAvailableDevices(availablePorts.*)'
+                    },
                     code: {
                         type: String,
-                        value: `from time import sleep
-
-while True:
-    print('hello micropython')
-    sleep(1)`
+                        value: null
+                    },
+                    saveTimeout: {
+                        type: Number,
+                        value: 0
                     }
                 }
             }
@@ -115,76 +164,148 @@ while True:
                 if (window.bus) {
                     this.set('bus', window.bus);
                 } else {
-                    this.set('bus', new EventEmitter());
-                    this._bindFakeServer();
+                    this.set('bus', new window.MicroPythonIDE.EventEmitter());
                 }
-
                 this._bindEvents();
-            }
-            disconnectedCallback() {
-                super.disconnectedCallback();
-            }
-            _bindFakeServer() {
-                this.bus.on('connect', (options) => {
-                    this.bus.emit('device-connected', {
-                        error: null,
-                        data: true
-                    });
-                    this.bus.emit('console-out', {
-                        error: null,
-                        data: 'Welcome to MicroPython'
-                    });
-                });
-                this.bus.on('disconnect', (options) => {
-                    this.bus.emit('device-disconnected', {
-                        error: null,
-                        data: false
-                    });
-                    this.bus.emit('console-out', {
-                        error: null,
-                        data: 'Disconected'
-                    });
-                });
-                this.bus.on('run', (code) => {
-                    this.bus.emit('console-out', {
-                        error: null,
-                        data: 'hello micropython'
-                    });
-                });
-                this.bus.on('stop', () => {
-                    this.bus.emit('console-out', {
-                        error: null,
-                        data: 'Stopped'
-                    });
-                });
+                this.loadAvailableDevices();
+                this.loadCode();
             }
             _bindEvents() {
-                this.bus.on('device-connected', (message) => {
+                this.bus.on('device-connected', () => {
+                    this.set('loading', false);
                     this.set('isConnected', true);
                 });
-                this.bus.on('device-disconnected', (message) => {
+                this.bus.on('device-disconnected', () => {
+                    this.set('loading', false);
                     this.set('isConnected', false);
                 });
                 this.bus.on('console-out', (message) => {
                     this._consoleOut(message.data);
                 });
+                this.bus.on('available-ports', (message) => {
+                    this.set('availablePorts', message.data);
+                });
+                this.bus.on('load-code', (message) => {
+                    this.set('code', message.data);
+                });
             }
             _consoleOut(msg) {
-                this.consoleOut = `${msg}\n${this.consoleOut}`;
-                this.consoleOut = `${this.consoleOut}\n`;
+                this.consoleOut = `${this.consoleOut}${msg}`;
+                this.consoleOut = `${this.consoleOut}`;
+                this.$.console.scrollTop = this.$.console.scrollHeight;
+            }
+            _computeAvailableDevices(ports) {
+                if (!ports || !ports.base) {
+                    return
+                }
+                return ports.base.filter((port) => {
+                    return !!port.vendorId;
+                });
+            }
+            _getEditor() {
+                return this.$.code || {};
+            }
+            loadCode() {
+                const code = localStorage.getItem('code');
+                const editor = this._getEditor();
+                this.set('code', code);
+            }
+            saveCode() {
+                const code = this._getEditor().value;
+                if (code && this.code != code) {
+                    clearTimeout(this.saveTimeout);
+                    this.saveTimeout = setTimeout(() => {
+                        localStorage.setItem('code', code);
+                    }, 2000);
+                }
             }
             connect() {
-                this.bus.emit('connect');
+                this.set('loading', true);
+                const select = Polymer.dom(this.root).querySelector('#serialPorts');
+                if (select && select.value) {
+                    this.bus.emit('connect', select.value);
+                }
             }
             disconnect() {
                 this.bus.emit('disconnect');
             }
             run() {
-                const code = this.$.code.value;
-                this.bus.emit('run', code);
+                const code = this._getEditor().value;
+                this.set('code', code);
+                this.bus.emit('run', code.replace('\n', '\r'));
             }
             stop() {
                 this.bus.emit('stop');
+            }
+            loadAvailableDevices() {
+                this.set('selectedPort', null);
+                this.bus.emit('load-available-devices');
+            }
+            saveFile(filename, data) {
+                const delay = (t, v) => {
+                    return new Promise(function(resolve) {
+                        setTimeout(resolve.bind(null, v), t);
+                    });
+                };
+
+                const processArrayWithDelay = (array, t, fn) => {
+                   var results = [];
+                   return array.reduce(function(p, item) {
+                       return p.then(function() {
+                           return fn(item).then(function(data) {
+                               results.push(data);
+                               return delay(t, results);
+                           });
+                       });
+                   }, Promise.resolve());
+               };
+
+                const processItem = (item) => {
+                    this.bus.emit('paste', item);
+                    return Promise.resolve();
+                };
+
+                this.bus.emit('stop');
+                this.bus.emit('enter-paste-mode');
+
+                let items = [`f = open('${filename}', 'wb')\r`];
+                data.split('\n').forEach((line) => {
+                    items.push(`f.write("""${line.replace('"""', '\"""')}\\n""")\r`);
+                });
+                items.push(`f.close()\r`);
+
+                processArrayWithDelay(items, 50, processItem).then((result) => {
+                    // all done here
+                    this.bus.emit('exit-paste-mode');
+                }, (reason) => {
+                    // rejection happened
+                    console.log('error', reason);
+                    this.bus.emit('exit-paste-mode');
+                });
+            }
+            reset() {
+                this.bus.emit('stop');
+                this.bus.emit('soft-reset');
+            }
+            saveMain() {
+                const code = this._getEditor().value;
+                this.set('code', code);
+                this.saveFile('main.py', code);
+            }
+            uploadFile() {
+                const filePicker = Polymer.dom(this.root).querySelector('#fileToUpload');
+                if (filePicker && filePicker.files && filePicker.files[0]) {
+                    const file = filePicker.files[0];
+                    const fileReader = new FileReader();
+                    fileReader.onload = () => {
+                        const result = fileReader.result.split(',');
+                        if (result && result[1]) {
+                            const code = new Buffer(result[1], 'base64').toString('ascii');
+                            this.saveFile(file.name, code);
+                        }
+                    }
+                    fileReader.readAsDataURL(file);
+                }
             }
         };
         window.customElements.define(MicroPythonIDE.is, MicroPythonIDE);

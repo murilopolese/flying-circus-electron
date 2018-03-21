@@ -1,6 +1,4 @@
-<script type="text/javascript">
-window.MicroPythonIDE = window.MicroPythonIDE || {};
-window.MicroPythonIDE.EventEmitter = class {
+class EventEmitter {
     constructor() {
         this.events = {};
     }
@@ -44,4 +42,4 @@ window.MicroPythonIDE.EventEmitter = class {
     }
 }
 
-</script>
+module.exports = EventEmitter;
