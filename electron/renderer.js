@@ -42,9 +42,7 @@ bus.on('disconnect', (options) => {
     }
     board = null
     bus.emit('device-disconnected')
-    bus.emit('output', {
-        data: 'Disconected\n'
-    })
+    bus.emit('output', 'Disconected\n')
 })
 
 // Events received from the front end to call board functions
