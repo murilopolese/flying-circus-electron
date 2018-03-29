@@ -285,7 +285,7 @@
             }
             output(msg) {
                 this.consoleOut = `${this.consoleOut}${msg}`
-                this.consoleOut = `${this.consoleOut.slice(-2000)}`
+                this.consoleOut = `${this.consoleOut.slice(-20000)}`
                 this.$.console.scrollTop = this.$.console.scrollHeight
             }
             computeAvailableDevices(ports) {
@@ -342,7 +342,7 @@
                 this.bus.emit('send-reset')
             }
             listFiles() {
-                const code = `
+                const code = `print(' ')
 from os import listdir
 print(listdir())
 `
@@ -379,11 +379,21 @@ f = open('${filename}', 'w')
                     }
                 })
                 pCode += 'f.close()\n'
-                console.log('_saveFile', pCode)
                 this.bus.emit('exec-from-string', pCode)
             }
             loadFile() {
-                console.log('load file', this.$.loadFilename.value)
+                const filename = this.$.loadFilename.value
+                if (filename) {
+                    this._loadFile(filename)
+                    this.$.loadDialog.close()
+                }
+            }
+            _loadFile(filename) {
+                const pCode = `print(' ')
+with open('${filename}', 'r') as f:
+    for line in f.readlines():
+        print(line.replace('\\n', ''))`
+                this.bus.emit('exec-from-string', pCode)
             }
             removeFile() {
                 const filename = this.$.removeFilename.value
@@ -393,7 +403,7 @@ f = open('${filename}', 'w')
                 }
             }
             _removeFile(filename) {
-                let pCode = `from os import remove
+                const pCode = `from os import remove
 remove('${filename}')`
                 this.bus.emit('exec-from-string', pCode)
             }

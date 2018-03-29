@@ -1,27 +1,14 @@
 ## ROADMAP:
-- upload file to board
-- save current code to file on local disk
-- flash Micropython to your board
-
-- load file from local disk
-- list files from board
-- get file from board
-- delete file from board
-- board file explorer
-
-- list files from disk
-- local file explorer
-- multiple file tabs
-
-- send single instruction to repl
-- resize console
-
+- Flash Micropython to your board
+- Send single instruction to repl
+- Offline MicroPython docs
+- MicroPython reference (more like Processing reference)
 - PixelKit examples
 - PixelKit tutorials
 - PixelKit demos
 
-
 ## Features:
+- upload file to board
 - drop files to editor
 - auto save current code
 - Connect/disconnect to board
@@ -30,3 +17,15 @@
 - Save file as `main.py`
 - Soft reset
 - Print board output to console
+- list files from board
+- get file from board
+- delete file from board
+
+# Won't do now (stretch goals)
+- save current code to file on local disk
+- load file from local disk
+- board file explorer
+- list files from disk
+- local file explorer
+- multiple file tabs
+- resize console
