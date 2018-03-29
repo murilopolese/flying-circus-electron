@@ -1,15 +1,20 @@
+<!-- Polymer -->
 <link rel="import" href="../bower_components/polymer/polymer-element.html">
 <link rel="import" href="../bower_components/polymer/lib/elements/dom-if.html">
+<!-- Iron components -->
 <link rel="import" href="../bower_components/iron-icons/iron-icons.html">
 <link rel="import" href="../bower_components/iron-icons/av-icons.html">
 <link rel="import" href="../bower_components/iron-icons/hardware-icons.html">
+<!-- Paper components -->
 <link rel="import" href="../bower_components/paper-fab/paper-fab.html">
-<link rel="import" href="../bower_components/paper-dropdown-menu/paper-dropdown-menu.html">
-<link rel="import" href="../bower_components/paper-listbox/paper-listbox.html">
-<link rel="import" href="../bower_components/paper-item/paper-item.html">
 <link rel="import" href="../bower_components/paper-spinner/paper-spinner-lite.html">
+<link rel="import" href="../bower_components/paper-dialog/paper-dialog.html">
+<link rel="import" href="../bower_components/paper-input/paper-input.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
 <link rel="import" href="../bower_components/neon-animation/web-animations.html">
+<!-- Other components -->
 <link rel="import" href="../bower_components/juicy-ace-editor/juicy-ace-editor.html">
+<!-- JS Libraries -->
 <link rel="import" href="./event-emitter.html">
 
 <dom-module id="mp-ide">
@@ -46,6 +51,10 @@
                 margin: 0 5px;
                 --paper-fab-background: var(--google-yellow-500);
             }
+            .header .separator {
+                width: 15px;
+                height: 100%;
+            }
             #fileToUpload {
                 color: white;
             }
@@ -56,10 +65,15 @@
             }
         </style>
         <div class="header">
-            <template is="dom-if" if="[[!isConnected]]">
+            <template is="dom-if" if="[[!connected]]">
                 <paper-fab
                     on-tap="connect"
                     icon="hardware:developer-board"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="loadAvailableDevices"
+                    icon="icons:refresh"
                     mini>
                 </paper-fab>
                 <select id="serialPorts">
@@ -68,7 +82,7 @@
                     </template>
                 </select>
             </template>
-            <template is="dom-if" if="[[isConnected]]">
+            <template is="dom-if" if="[[connected]]">
                 <paper-fab
                     on-tap="disconnect"
                     icon="hardware:developer-board"
@@ -77,6 +91,7 @@
                 <paper-fab
                     on-tap="run"
                     icon="av:play-arrow"
+                    disabled="[[running]]"
                     mini>
                 </paper-fab>
                 <paper-fab
@@ -85,34 +100,70 @@
                     mini>
                 </paper-fab>
                 <paper-fab
-                    on-tap="saveMain"
-                    icon="icons:save"
-                    mini>
-                </paper-fab>
-                <paper-fab
                     on-tap="reset"
                     icon="av:replay"
                     mini>
                 </paper-fab>
+                <div class="separator"></div>
                 <paper-fab
-                    on-tap="uploadFile"
+                    on-tap="listFiles"
+                    icon="icons:folder"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="openSaveDialog"
                     icon="icons:file-upload"
                     mini>
                 </paper-fab>
-                <input id="fileToUpload" type="file">
+                <paper-fab
+                    on-tap="openLoadDialog"
+                    icon="icons:file-download"
+                    mini>
+                </paper-fab>
+                <paper-fab
+                    on-tap="openRemoveDialog"
+                    icon="icons:delete-forever"
+                    mini>
+                </paper-fab>
             </template>
-            <template is="dom-if" if="[[loading]]">
-                <paper-spinner-lite active="[[loading]]"></paper-spinner-lite active="[[loading]]">
+            <template is="dom-if" if="[[connecting]]">
+                <paper-spinner-lite active="[[connecting]]"></paper-spinner-lite>
             </template>
         </div>
         <juicy-ace-editor
             id="code"
             class="editor"
+            fontsize="13"
             mode="ace/mode/python"
-            on-change="saveCode"
+            theme="ace/theme/clouds"
+            on-change="autosaveCode"
             value="[[code]]">
         </juicy-ace-editor>
         <div id="console" class="console"><code><pre>[[consoleOut]]</pre></code></div>
+        <paper-dialog id="saveDialog" modal>
+            <h2>Save as</h2>
+            <paper-input id="saveFilename" always-float-label label="File name"></paper-input>
+            <div class="buttons">
+                <paper-button autofocus dialog-dismiss>Cancel</paper-button>
+                <paper-button on-tap="saveFile">OK</paper-button>
+            </div>
+        </paper-dialog>
+        <paper-dialog id="loadDialog" modal>
+            <h2>Load file</h2>
+            <paper-input id="loadFilename" always-float-label label="File name"></paper-input>
+            <div class="buttons">
+                <paper-button autofocus dialog-dismiss>Cancel</paper-button>
+                <paper-button on-tap="loadFile">OK</paper-button>
+            </div>
+        </paper-dialog>
+        <paper-dialog id="removeDialog" modal>
+            <h2>Remove file</h2>
+            <paper-input id="removeFilename" always-float-label label="File name"></paper-input>
+            <div class="buttons">
+                <paper-button autofocus dialog-dismiss>Cancel</paper-button>
+                <paper-button on-tap="removeFile">OK</paper-button>
+            </div>
+        </paper-dialog>
     </template>
     <script>
         class MicroPythonIDE extends Polymer.Element {
@@ -121,193 +172,232 @@
             }
             static get properties() {
                 return {
-                    loading: {
-                        type: Boolean,
-                        value: false
-                    },
-                    bus: {
-                        type: Object,
-                        value: null
-                    },
-                    isConnected: {
-                        type: Boolean,
-                        value: false
-                    },
-                    consoleOut: {
-                        type: String,
-                        value: ''
-                    },
+                    /**
+                    * All available serial ports
+                    */
                     availablePorts: {
                         type: Array,
                         value: () => []
                     },
-                    selectedPort: {
-                        type: String,
-                        value: null
-                    },
+                    /**
+                    * All serial ports that pass the filter `computeAvailableDevices`
+                    */
                     availableDevices: {
                         type: Array,
-                        computed: '_computeAvailableDevices(availablePorts.*)'
+                        computed: 'computeAvailableDevices(availablePorts.*)'
                     },
+                    /**
+                    * Communication channel between front end and platform
+                    * specific process
+                    */
+                    bus: {
+                        type: Object,
+                        value: null
+                    },
+                    /**
+                    * String with code on the editor
+                    */
                     code: {
                         type: String,
                         value: null
                     },
-                    saveTimeout: {
+                    /**
+                    * Flag if app is trying to connect to a board
+                    */
+                    connecting: {
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                    * Flag if app is connected to a board
+                    */
+                    connected: {
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                    * Flag if app is running code
+                    */
+                    running: {
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                    * Flag if board is in raw REPL mode
+                    */
+                    rawRepl: {
+                        type: Boolean,
+                        value: false
+                    },
+                    /**
+                    * Console output
+                    */
+                    consoleOut: {
+                        type: String,
+                        value: ''
+                    },
+                    /**
+                    * Auto save timeout id
+                    */
+                    autosaveTimeout: {
                         type: Number,
                         value: 0
                     }
                 }
             }
             connectedCallback() {
-                super.connectedCallback();
+                super.connectedCallback()
                 if (window.bus) {
-                    this.set('bus', window.bus);
+                    this.set('bus', window.bus)
                 } else {
-                    this.set('bus', new window.MicroPythonIDE.EventEmitter());
+                    this.set('bus', new window.MicroPythonIDE.EventEmitter())
                 }
-                this._bindEvents();
-                this.loadAvailableDevices();
-                this.loadCode();
+                this.bindEvents()
+                this.loadAvailableDevices()
+                this.loadCodeFromLocalStorage()
             }
-            _bindEvents() {
-                this.bus.on('device-connected', () => {
-                    this.set('loading', false);
-                    this.set('isConnected', true);
-                });
-                this.bus.on('device-disconnected', () => {
-                    this.set('loading', false);
-                    this.set('isConnected', false);
-                });
-                this.bus.on('console-out', (message) => {
-                    this._consoleOut(message.data);
-                });
-                this.bus.on('available-ports', (message) => {
-                    this.set('availablePorts', message.data);
-                });
-                this.bus.on('load-code', (message) => {
-                    this.set('code', message.data);
-                });
+            bindEvents() {
+                this.bus.on('connected', () => {
+                    this.set('connecting', false)
+                    this.set('connected', true)
+                })
+                this.bus.on('disconnected', () => {
+                    this.set('connecting', false)
+                    this.set('connected', false)
+                })
+                this.bus.on('output', (data) => {
+                    this.output(data)
+                })
+                this.bus.on('available-ports', (availablePorts) => {
+                    this.set('availablePorts', availablePorts)
+                })
+                this.bus.on('load-code', (code) => {
+                    this.set('code', code)
+                })
+                this.bus.on('raw-repl-started', () => {
+                    this.set('rawRepl', true)
+                    this.set('running', true)
+                })
+                this.bus.on('raw-repl-finished', () => {
+                    this.set('rawRepl', false)
+                    this.set('running', false)
+                })
             }
-            _consoleOut(msg) {
-                this.consoleOut = `${this.consoleOut}${msg}`;
-                this.consoleOut = `${this.consoleOut}`;
-                this.$.console.scrollTop = this.$.console.scrollHeight;
+            output(msg) {
+                this.consoleOut = `${this.consoleOut}${msg}`
+                this.consoleOut = `${this.consoleOut.slice(-2000)}`
+                this.$.console.scrollTop = this.$.console.scrollHeight
             }
-            _computeAvailableDevices(ports) {
+            computeAvailableDevices(ports) {
                 if (!ports || !ports.base) {
                     return
                 }
                 return ports.base.filter((port) => {
-                    return !!port.vendorId;
-                });
+                    return !!port.vendorId
+                })
             }
-            _getEditor() {
-                return this.$.code || {};
+            getEditor() {
+                return this.$.code || {}
             }
-            loadCode() {
-                const code = localStorage.getItem('code');
-                const editor = this._getEditor();
-                this.set('code', code);
+            loadCodeFromLocalStorage() {
+                const code = localStorage.getItem('code')
+                this.set('code', code)
             }
-            saveCode() {
-                const code = this._getEditor().value;
+            autosaveCode() {
+                const code = this.getEditor().value
                 if (code && this.code != code) {
-                    clearTimeout(this.saveTimeout);
-                    this.saveTimeout = setTimeout(() => {
-                        localStorage.setItem('code', code);
-                    }, 2000);
+                    clearTimeout(this.autosaveTimeout)
+                    this.autosaveTimeout = setTimeout(() => {
+                        localStorage.setItem('code', code)
+                    }, 2000)
                 }
+                this.set('code', code)
             }
             connect() {
-                this.set('loading', true);
-                const select = Polymer.dom(this.root).querySelector('#serialPorts');
+                this.set('connecting', true)
+                const select = Polymer.dom(this.root).querySelector('#serialPorts')
                 if (select && select.value) {
-                    this.bus.emit('connect', select.value);
+                    this.bus.emit('connect', select.value)
                 }
             }
             disconnect() {
-                this.bus.emit('disconnect');
-            }
-            run() {
-                const code = this._getEditor().value;
-                this.set('code', code);
-                this.bus.emit('run', code.replace('\n', '\r'));
-            }
-            stop() {
-                this.bus.emit('stop');
+                this.bus.emit('disconnect')
             }
             loadAvailableDevices() {
-                this.set('selectedPort', null);
-                this.bus.emit('load-available-devices');
+                this.bus.emit('load-available-devices')
             }
-            saveFile(filename, data) {
-                const delay = (t, v) => {
-                    return new Promise(function(resolve) {
-                        setTimeout(resolve.bind(null, v), t);
-                    });
-                };
+            run() {
+                this.bus.emit('exec-from-string', this.code)
+            }
+            stop() {
+                if (this.running) {
 
-                const processArrayWithDelay = (array, t, fn) => {
-                   var results = [];
-                   return array.reduce(function(p, item) {
-                       return p.then(function() {
-                           return fn(item).then(function(data) {
-                               results.push(data);
-                               return delay(t, results);
-                           });
-                       });
-                   }, Promise.resolve());
-               };
+                } else {
 
-                const processItem = (item) => {
-                    this.bus.emit('paste', item);
-                    return Promise.resolve();
-                };
-
-                this.bus.emit('stop');
-                this.bus.emit('enter-paste-mode');
-
-                let items = [`f = open('${filename}', 'wb')\r`];
-                data.split('\n').forEach((line) => {
-                    items.push(`f.write("""${line.replace('"""', '\"""')}\\n""")\r`);
-                });
-                items.push(`f.close()\r`);
-
-                processArrayWithDelay(items, 50, processItem).then((result) => {
-                    // all done here
-                    this.bus.emit('exit-paste-mode');
-                }, (reason) => {
-                    // rejection happened
-                    console.log('error', reason);
-                    this.bus.emit('exit-paste-mode');
-                });
+                }
+                this.bus.emit('send-stop')
             }
             reset() {
-                this.bus.emit('stop');
-                this.bus.emit('soft-reset');
+                this.bus.emit('send-stop')
+                this.bus.emit('send-reset')
             }
-            saveMain() {
-                const code = this._getEditor().value;
-                this.set('code', code);
-                this.saveFile('main.py', code);
+            listFiles() {
+                const code = `
+from os import listdir
+print(listdir())
+`
+                this.bus.emit('exec-from-string', code)
             }
-            uploadFile() {
-                const filePicker = Polymer.dom(this.root).querySelector('#fileToUpload');
-                if (filePicker && filePicker.files && filePicker.files[0]) {
-                    const file = filePicker.files[0];
-                    const fileReader = new FileReader();
-                    fileReader.onload = () => {
-                        const result = fileReader.result.split(',');
-                        if (result && result[1]) {
-                            const code = new Buffer(result[1], 'base64').toString('ascii');
-                            this.saveFile(file.name, code);
-                        }
-                    }
-                    fileReader.readAsDataURL(file);
+            openSaveDialog() {
+                this.$.saveDialog.open()
+            }
+            openLoadDialog() {
+                this.$.loadDialog.open()
+            }
+            openRemoveDialog() {
+                this.$.removeDialog.open()
+            }
+            saveFile() {
+                const filename = this.$.saveFilename.value
+                if (filename && this.code) {
+                    this._saveFile(this.$.saveFilename.value, this.code)
+                    this.$.saveDialog.close()
                 }
             }
+            _saveFile(filename, code) {
+                let pCode = `import binascii
+f = open('${filename}', 'w')
+`
+                // `code` is what comes from the editor. We want to write its
+                // line one by one on a file so we split by `\n`
+                code.split('\n').forEach((line) => {
+                    if (line) {
+                        // To avoid the string escaping with weirdly we encode
+                        // the line plus the `\n` that we just removed to base64
+                        const l = Buffer.from(`${line}\n`).toString('base64')
+                        pCode += `f.write(binascii.a2b_base64("${l}"))\n`
+                    }
+                })
+                pCode += 'f.close()\n'
+                console.log('_saveFile', pCode)
+                this.bus.emit('exec-from-string', pCode)
+            }
+            loadFile() {
+                console.log('load file', this.$.loadFilename.value)
+            }
+            removeFile() {
+                const filename = this.$.removeFilename.value
+                if (filename) {
+                    this._removeFile(filename)
+                    this.$.removeDialog.close()
+                }
+            }
+            _removeFile(filename) {
+                let pCode = `from os import remove
+remove('${filename}')`
+                this.bus.emit('exec-from-string', pCode)
+            }
         };
-        window.customElements.define(MicroPythonIDE.is, MicroPythonIDE);
+        window.customElements.define(MicroPythonIDE.is, MicroPythonIDE)
     </script>
 </dom-module>
