@@ -16,6 +16,8 @@
 <link rel="import" href="../bower_components/juicy-ace-editor/juicy-ace-editor.html">
 <!-- JS Libraries -->
 <link rel="import" href="./event-emitter.html">
+<script type="text/javascript" src="../libs/xterm/xterm.js"></script>
+<script type="text/javascript" src="../libs/xterm/addons/fit/fit.js"></script>
 
 <dom-module id="mp-ide">
     <template>
@@ -62,6 +64,126 @@
                 margin: 5px;
                  --paper-spinner-stroke-width: 6px;
                  --paper-spinner-color: var(--google-yellow-500);
+            }
+            .xterm {
+                font-family: courier-new, courier, monospace;
+                font-feature-settings: "liga" 0;
+                position: relative;
+                user-select: none;
+                -ms-user-select: none;
+                -webkit-user-select: none;
+            }
+
+            .xterm.focus,
+            .xterm:focus {
+                outline: none;
+            }
+
+            .xterm .xterm-helpers {
+                position: absolute;
+                top: 0;
+                /**
+                 * The z-index of the helpers must be higher than the canvases in order for
+                 * IMEs to appear on top.
+                 */
+                z-index: 10;
+            }
+
+            .xterm .xterm-helper-textarea {
+                /*
+                 * HACK: to fix IE's blinking cursor
+                 * Move textarea out of the screen to the far left, so that the cursor is not visible.
+                 */
+                position: absolute;
+                opacity: 0;
+                left: -9999em;
+                top: 0;
+                width: 0;
+                height: 0;
+                z-index: -10;
+                /** Prevent wrapping so the IME appears against the textarea at the correct position */
+                white-space: nowrap;
+                overflow: hidden;
+                resize: none;
+            }
+
+            .xterm .composition-view {
+                /* TODO: Composition position got messed up somewhere */
+                background: #000;
+                color: #FFF;
+                display: none;
+                position: absolute;
+                white-space: nowrap;
+                z-index: 1;
+            }
+
+            .xterm .composition-view.active {
+                display: block;
+            }
+
+            .xterm .xterm-viewport {
+                /* On OS X this is required in order for the scroll bar to appear fully opaque */
+                background-color: #000;
+                overflow-y: scroll;
+                cursor: default;
+                position: absolute;
+                right: 0;
+                left: 0;
+                top: 0;
+                bottom: 0;
+            }
+
+            .xterm .xterm-screen {
+                position: relative;
+            }
+
+            .xterm .xterm-screen canvas {
+                position: absolute;
+                left: 0;
+                top: 0;
+            }
+
+            .xterm .xterm-scroll-area {
+                visibility: hidden;
+            }
+
+            .xterm .xterm-char-measure-element {
+                display: inline-block;
+                visibility: hidden;
+                position: absolute;
+                left: -9999em;
+            }
+
+            .xterm.enable-mouse-events {
+                /* When mouse events are enabled (eg. tmux), revert to the standard pointer cursor */
+                cursor: default;
+            }
+
+            .xterm:not(.enable-mouse-events) {
+                cursor: text;
+            }
+
+            .xterm .xterm-accessibility,
+            .xterm .xterm-message {
+                position: absolute;
+                left: 0;
+                top: 0;
+                bottom: 0;
+                right: 0;
+                z-index: 100;
+                color: transparent;
+            }
+
+            .xterm .xterm-accessibility-tree:focus [id^="xterm-active-item-"] {
+                outline: 1px solid #F80;
+            }
+
+            .xterm .live-region {
+                position: absolute;
+                left: -9999px;
+                width: 1px;
+                height: 1px;
+                overflow: hidden;
             }
         </style>
         <div class="header">
@@ -139,7 +261,8 @@
             on-change="autosaveCode"
             value="[[code]]">
         </juicy-ace-editor>
-        <div id="console" class="console"><code><pre>[[consoleOut]]</pre></code></div>
+        <div id="console" class="console"></div>
+        <!-- <div id="console" class="console"><code><pre>[[consoleOut]]</pre></code></div> -->
         <paper-dialog id="saveDialog" modal>
             <h2>Save as</h2>
             <paper-input id="saveFilename" always-float-label label="File name"></paper-input>
@@ -242,6 +365,10 @@
                     autosaveTimeout: {
                         type: Number,
                         value: 0
+                    },
+                    term: {
+                        type: Object,
+                        value: null
                     }
                 }
             }
@@ -252,6 +379,16 @@
                 } else {
                     this.set('bus', new window.MicroPythonIDE.EventEmitter())
                 }
+
+                Terminal.applyAddon(fit)
+                this.set('term', new Terminal())
+                this.term.open(Polymer.dom(this.root).querySelector('#console'))
+                this.term.fit()
+                this.term.write(`Welcome to MicroPythonIDE! :D`)
+                this.term.on('key', (key, e) => {
+                    this.sendChar(key)
+                })
+
                 this.bindEvents()
                 this.loadAvailableDevices()
                 this.loadCodeFromLocalStorage()
@@ -283,10 +420,15 @@
                     this.set('running', false)
                 })
             }
+            loadAvailableDevices() {
+                this.bus.emit('load-available-devices')
+            }
+            loadCodeFromLocalStorage() {
+                const code = localStorage.getItem('code')
+                this.set('code', code)
+            }
             output(msg) {
-                this.consoleOut = `${this.consoleOut}${msg}`
-                this.consoleOut = `${this.consoleOut.slice(-20000)}`
-                this.$.console.scrollTop = this.$.console.scrollHeight
+                this.term.write(msg)
             }
             computeAvailableDevices(ports) {
                 if (!ports || !ports.base) {
@@ -296,15 +438,8 @@
                     return !!port.vendorId
                 })
             }
-            getEditor() {
-                return this.$.code || {}
-            }
-            loadCodeFromLocalStorage() {
-                const code = localStorage.getItem('code')
-                this.set('code', code)
-            }
             autosaveCode() {
-                const code = this.getEditor().value
+                const code = this.$.code.value
                 if (code && this.code != code) {
                     clearTimeout(this.autosaveTimeout)
                     this.autosaveTimeout = setTimeout(() => {
@@ -323,30 +458,30 @@
             disconnect() {
                 this.bus.emit('disconnect')
             }
-            loadAvailableDevices() {
-                this.bus.emit('load-available-devices')
-            }
-            run() {
-                this.bus.emit('exec-from-string', this.code)
-            }
             stop() {
-                if (this.running) {
-
-                } else {
-
-                }
                 this.bus.emit('send-stop')
             }
             reset() {
                 this.bus.emit('send-stop')
                 this.bus.emit('send-reset')
             }
+            execFromString(code) {
+                this.bus.emit('exec-from-string', code)
+            }
+            sendChar(c) {
+                if (this.connected) {
+                    this.bus.emit('exec', c);
+                }
+            }
+            run() {
+                this.execFromString(this.code)
+            }
             listFiles() {
                 const code = `print(' ')
 from os import listdir
 print(listdir())
 `
-                this.bus.emit('exec-from-string', code)
+                this.execFromString(code)
             }
             openSaveDialog() {
                 this.$.saveDialog.open()
@@ -379,7 +514,7 @@ f = open('${filename}', 'w')
                     }
                 })
                 pCode += 'f.close()\n'
-                this.bus.emit('exec-from-string', pCode)
+                this.execFromString(pCode)
             }
             loadFile() {
                 const filename = this.$.loadFilename.value
@@ -393,7 +528,7 @@ f = open('${filename}', 'w')
 with open('${filename}', 'r') as f:
     for line in f.readlines():
         print(line.replace('\\n', ''))`
-                this.bus.emit('exec-from-string', pCode)
+                this.execFromString(pCode)
             }
             removeFile() {
                 const filename = this.$.removeFilename.value
@@ -405,7 +540,7 @@ with open('${filename}', 'r') as f:
             _removeFile(filename) {
                 const pCode = `from os import remove
 remove('${filename}')`
-                this.bus.emit('exec-from-string', pCode)
+                this.execFromString(pCode)
             }
         };
         window.customElements.define(MicroPythonIDE.is, MicroPythonIDE)

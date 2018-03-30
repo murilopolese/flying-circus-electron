@@ -61,6 +61,9 @@ class MPBoard extends EventEmiter {
             this.port.write('\n')
         }
     }
+    exec(command) {
+        this.port.write(Buffer.from(command))
+    }
     execFromFile(filename) {
         this.enterRawRepl()
         const code = fs.readFileSync(filename).toString()

@@ -1,6 +1,7 @@
 ## ROADMAP:
 - Flash Micropython to your board
-- Send single instruction to repl
+- Send single instruction to repl (replace old terminal with term.js)
+- WebREPL support
 - Offline MicroPython docs
 - MicroPython reference (more like Processing reference)
 - PixelKit examples
@@ -20,6 +21,10 @@
 - list files from board
 - get file from board
 - delete file from board
+
+## Bugs
+
+- esp8266 firmware doesn't come with binascii
 
 # Won't do now (stretch goals)
 - save current code to file on local disk

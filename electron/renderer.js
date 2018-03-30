@@ -64,6 +64,9 @@ bus.on('send-reset', () => {
 bus.on('exec-from-string', (code) => {
     board.execFromString(code)
 })
+bus.on('exec', (command) => {
+    board.exec(command)
+})
 
 bus.on('load-available-devices', () => {
     SerialPort.list().then((ports) => {
