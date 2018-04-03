@@ -1,14 +1,21 @@
-## ROADMAP:
+## TODO:
 - Flash Micropython to your board
-- Send single instruction to repl (replace old terminal with term.js)
 - WebREPL support
-- Offline MicroPython docs
-- MicroPython reference (more like Processing reference)
-- PixelKit examples
-- PixelKit tutorials
-- PixelKit demos
+- Electron native menus
+- Settings page
+- Electron build for Mac, Windows and Linux
+- MicroPython IDE website
+- Help
+    - MicroPython reference (more like Processing reference)
+    - Examples
+    - Tutorials
+    - Demos
+- File explorer (list, remove, get, upload)
+- Multiple file tabs
+- Resize console
 
-## Features:
+## Done:
+- Send single instruction to repl (replace old terminal with term.js)
 - upload file to board
 - drop files to editor
 - auto save current code
@@ -23,7 +30,6 @@
 - delete file from board
 
 ## Bugs
-
 - esp8266 firmware doesn't come with binascii
 
 # Won't do now (stretch goals)
@@ -32,5 +38,3 @@
 - board file explorer
 - list files from disk
 - local file explorer
-- multiple file tabs
-- resize console

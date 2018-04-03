@@ -256,6 +256,7 @@
             id="code"
             class="editor"
             fontsize="13"
+            softtabs="true"
             mode="ace/mode/python"
             theme="ace/theme/clouds"
             on-change="autosaveCode"
@@ -383,6 +384,7 @@
                 Terminal.applyAddon(fit)
                 this.set('term', new Terminal())
                 this.term.open(Polymer.dom(this.root).querySelector('#console'))
+                this.term.setOption('fontSize', 12)
                 this.term.fit()
                 this.term.write(`Welcome to MicroPythonIDE! :D`)
                 this.term.on('key', (key, e) => {
