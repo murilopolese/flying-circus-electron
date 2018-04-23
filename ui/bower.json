@@ -1,6 +1,6 @@
 {
-  "name": "micropython-frontend-ide",
-  "description": "Front end for Micropython IDE",
+  "name": "flying-circus-ui",
+  "description": "Front end for Flying Circus IDE",
   "main": "index.html",
   "authors": [
     "Murilo Polese <murilopolese@gmail.com>"
