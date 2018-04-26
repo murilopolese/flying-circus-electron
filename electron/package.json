@@ -1,5 +1,5 @@
 {
-  "name": "flying-circus-electron-ide",
+  "name": "flying-circus-electron",
   "version": "0.1.0",
   "description": "Electron wrapper for MicroPython IDE",
   "main": "main.js",
@@ -10,7 +10,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "micropython-ide": "../ui",
+    "flying-circus-ui": "../ui",
     "serialport": "^6.1.1"
   },
   "devDependencies": {
