@@ -26,3 +26,9 @@ Flying Circus is a MicroPython Integrated Development Environment (fancy name fo
 ## Download
 
 Check the [releases](https://github.com/murilopolese/flying-circus/releases).
+
+## Building yourself
+
+1. Install `electron/ui` bower dependencies.
+1. Install `electron` npm dependencies.
+1. Package `electron` for your OS.
