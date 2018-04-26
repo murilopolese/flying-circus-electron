@@ -5,16 +5,17 @@
   "main": "main.js",
   "scripts": {
     "start": "./node_modules/.bin/electron .",
-    "install": "./node_modules/.bin/electron-rebuild"
+    "install": "./node_modules/.bin/electron-rebuild",
+    "package-osx": "./node_modules/.bin/electron-packager ./ flying-circus --out=dist --overwrite"
   },
-  "author": "",
+  "author": "Murilo Polese <murilopolese@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "flying-circus-ui": "../ui",
     "serialport": "^6.1.1"
   },
   "devDependencies": {
     "electron": "^1.8.4",
+    "electron-packager": "^12.0.1",
     "electron-rebuild": "^1.7.3"
   }
 }
