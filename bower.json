@@ -1,0 +1,20 @@
+{
+  "name": "flying-circus-electron",
+  "authors": [
+    "Murilo Polese <murilopolese@gmail.com>"
+  ],
+  "description": "Electron wrapper for Flying Circus (MicroPython IDE)",
+  "main": "index.html",
+  "license": "ISC",
+  "homepage": "http://github.com/murilopolese/flying-circus-website",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "flying-circus-ui": "murilopolese/flying-circus-ui"
+  }
+}
