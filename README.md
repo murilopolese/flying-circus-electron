@@ -1,6 +1,6 @@
-# Flying Circus - MicroPython IDE
+# Flying Circus Electron - MicroPython IDE
 
-Flying Circus is a MicroPython Integrated Development Environment (fancy name for a fancy editor) very much inspired by the [Processing IDE](https://processing.org/).
+Flying Circus Electron is an Electron "wrapper" for Flying Circus, a MicroPython IDE (Integrated Development Environment, fancy name for editor). It is very much inspired by the simplicity of [Processing IDE](https://processing.org/).
 
 ## Features
 
@@ -16,6 +16,7 @@ Flying Circus is a MicroPython Integrated Development Environment (fancy name fo
 
 ## Roadmap
 
+- Connect to your board via WebSocket/WebREPL
 - Easy way to install MicroPython to your hardware (You will have to [download the firmware yourself](http://micropython.org/download))
 
 ## Known bugs:
