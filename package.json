@@ -1,6 +1,5 @@
 {
   "name": "flying-circus-electron",
-  "version": "0.1.0",
   "description": "Electron wrapper for MicroPython IDE",
   "main": "main.js",
   "scripts": {
