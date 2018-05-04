@@ -20,15 +20,14 @@ Flying Circus is a MicroPython Integrated Development Environment (fancy name fo
 
 ## Known bugs:
 
-- Relies on MicroPython's module `binascii` that is not available on some MicroPython firmwares by default. Currently I'm focusing my efforts on using it with the firmware for ESP32 which comes with the module already. For the ESP8266 firmware we have to send the module ourselfes using `ampy` or tool alike.
-- Minor UI improvements such as updating the UI when board disconnects, the list of ports not updating automatically or the app sometimes getting stuck on a "running" state are a mix of bug and "that doesn't bother me too much". If there is something that bothers you, get in touch and fork me gently.
+- Relies on MicroPython's module `binascii` that is not available on some MicroPython firmwares by default. Currently I'm focusing my efforts on using it with the firmware for ESP32 which comes with the module already. For the ESP8266 firmware we have to send the module ourselves using `ampy` or tool alike.
 
 ## Download
 
-Check the [releases](https://github.com/murilopolese/flying-circus/releases).
+Check the [releases](https://github.com/murilopolese/flying-circus-electron/releases).
 
 ## Building yourself
 
-1. Install `electron/ui` bower dependencies.
-1. Install `electron` npm dependencies.
-1. Package `electron` for your OS.
+1. Install bower dependencies: `bower i`
+1. Install npm dependencies: `npm i`
+1. Package for your OS: `npm run package`

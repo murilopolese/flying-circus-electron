@@ -42,7 +42,7 @@ bus.on('disconnect', (options) => {
     }
     board = null
     bus.emit('device-disconnected')
-    bus.emit('output', 'Disconected\n')
+    bus.emit('output', 'Disconected\n\r')
 })
 
 // Events received from the front end to call board functions
@@ -70,11 +70,24 @@ bus.on('exec', (command) => {
 
 bus.on('load-available-devices', () => {
     SerialPort.list().then((ports) => {
-        bus.emit('available-ports', ports)
+        bus.emit('available-devices', ports.filter((port) => {
+            return !!port.vendorId
+        }))
     })
 })
 
-window.bus = bus
+bus.on('save-file', (data) => {
+    console.log('save file', data)
+    board.saveFile(data.filename, data.code)
+})
+bus.on('load-file', (filename) => {
+    board.loadFile(filename)
+})
+bus.on('remove-file', (filename) => {
+    board.removeFile(filename)
+})
+
+window.FlyingCircus = { bus }
 
 window.onload = () => {
     const dragOverHandler = (e) => {

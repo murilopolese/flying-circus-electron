@@ -76,6 +76,38 @@ class MPBoard extends EventEmiter {
         this.execRaw(code)
         this.exitRawRepl()
     }
+    saveFile(filename, code) {
+        if (!filename || !code) {
+            return
+        }
+        let pCode = `import binascii
+f = open('${filename}', 'w')
+`
+        // `code` is what comes from the editor. We want to write its
+        // line one by one on a file so we split by `\n`
+        code.split('\n').forEach((line) => {
+            if (line) {
+                // To avoid the string escaping with weirdly we encode
+                // the line plus the `\n` that we just removed to base64
+                const l = Buffer.from(`${line}\n`).toString('base64')
+                pCode += `f.write(binascii.a2b_base64("${l}"))\n`
+            }
+        })
+        pCode += 'f.close()\n'
+        this.execFromString(pCode)
+    }
+    loadFile(filename) {
+        const pCode = `print(' ')
+with open('${filename}', 'r') as f:
+    for line in f.readlines():
+        print(line.replace('\\n', ''))`
+        this.execFromString(pCode)
+    }
+    removeFile(filename) {
+        const pCode = `from os import remove
+remove('${filename}')`
+        this.execFromString(pCode)
+    }
 }
 
 module.exports = MPBoard;
