@@ -15,6 +15,6 @@
     "tests"
   ],
   "dependencies": {
-    "flying-circus-ui": "murilopolese/flying-circus-ui#v0.1.1"
+    "flying-circus-ui": "murilopolese/flying-circus-ui#v1.x.x"
   }
 }

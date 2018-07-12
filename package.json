@@ -1,5 +1,6 @@
 {
   "name": "flying-circus-electron",
+  "version": "1.0.0",
   "description": "Electron wrapper for MicroPython IDE",
   "main": "main.js",
   "scripts": {
@@ -10,7 +11,8 @@
   "author": "Murilo Polese <murilopolese@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "serialport": "^6.1.1"
+    "flying-circus-connection-serial": "murilopolese/flying-circus-connection-serial#1.x.x",
+    "flying-circus-connection-websocket": "murilopolese/flying-circus-connection-websocket#1.x.x"
   },
   "devDependencies": {
     "electron": "^1.8.4",
