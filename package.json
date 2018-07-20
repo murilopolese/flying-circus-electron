@@ -11,8 +11,8 @@
   "author": "Murilo Polese <murilopolese@gmail.com>",
   "license": "ISC",
   "dependencies": {
-    "flying-circus-connection-serial": "murilopolese/flying-circus-connection-serial#1.x.x",
-    "flying-circus-connection-websocket": "murilopolese/flying-circus-connection-websocket#1.x.x"
+    "flying-circus-connection-serial": "murilopolese/flying-circus-connection-serial#1.0.0",
+    "flying-circus-connection-websocket": "murilopolese/flying-circus-connection-websocket#1.0.0"
   },
   "devDependencies": {
     "electron": "^2.0.0",
